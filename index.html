@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<head>
+    <title>Web Crawler & Sentimental Analysis Project</title>
+    <link rel="icon" href="edge_logo.png" type="image/icon type">
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <link rel="stylesheet" type="text/css" href="dist/semantic.css">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="https://code.jquery.com/jquery-3.1.1.min.js" integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8=" crossorigin="anonymous"></script>
+    <script src="dist/semantic.js"></script>
+</head>
+<body>
+<div class="introcard">
+    <div id="card" class="ui blue raised very padded text container segment">
+        <i id="logo" class="bug icon"></i>
+        <h1 class="ui header">Web Crawler & Sentimental Analysis</h1>
+        <hr>
+        <br>
+        <p class="ui text">Please login with Twitter OAuth tokens to continue...</p>
+        <br>
+        <button id="loginbtn" class="ui twitter button">
+            <i class="twitter icon"></i>
+            Login using Twitter
+        </button>
+        <button id="closeapp" class="ui negative button">
+            <i class="close icon"></i>
+            Exit
+        </button>
+    </div>
+</div>
+<div id="wait" class="ui basic modal">
+    <div class="ui icon header">
+        <i class="wait icon"></i>
+        Loading...
+    </div>
+</div>
+<div class="ui modal">
+        <i class="close icon"></i>
+        <div class="header">
+            Twitter Authorization
+        </div>
+        <div class="image content">
+          <div class="image">
+                <img class="image" src="https://www.insidehighered.com/sites/default/server_files/styles/large/public/media/HiRes%20%2869%29.jpg?itok=t0IVlGa1">
+          </div>
+          <div class="description">
+            <div class="ui container">
+                <div class="ui labeled icon right input fluid">
+                    <div class="ui basic label">
+                        Consumer Key
+                    </div>
+                    <input id="consKey" type="password" placeholder="e.g., A23RIWE9H2IFBN">
+                    <i class="users icon"></i>
+                </div>
+                <br>
+                <div class="ui labeled icon right input fluid">
+                    <div class="ui basic label">
+                        Consumer Secret Key
+                    </div>
+                    <input id="consSec" type="password" placeholder="e.g., 2384FGH384G73VU2">
+                    <i class="users icon"></i>
+                </div>
+                <br>
+                <div class="ui labeled icon right input fluid">
+                    <div class="ui label">
+                        Access Token
+                    </div>
+                    <input id="accTok" type="password" placeholder="e.g., 9243FH3IW4BF34789CGHBUW4IEBC">
+                    <i class="key icon"></i>
+                </div>
+                <br>
+                <div class="ui labeled icon right input fluid">
+                    <div class="ui label">
+                        Access Secret Token
+                    </div>
+                    <input id="accSec" type="password" placeholder="e.g., NEIRGOJV3904FJHI4N">
+                    <i class="key icon"></i>
+                </div>
+            </div>
+          </div>
+        </div>
+        <div class="actions">
+          <div class="ui icon right red button">
+              Reset
+              <i class="close icon"></i>
+          </div>
+          <div id="authenticate" class="ui icon right green button">
+              Authenticate
+              <i class="check icon"></i>
+            </div>
+        </div>
+      </div>
+
+
+<script>
+    $('#loginbtn').on("click",function()
+    {
+        $('.ui.modal').modal('show');
+    });
+    $('#closeapp').on("click",function(){
+        window.top.close();
+    });
+
+    $(window).resize(function(){
+
+        $('.introcard').css({
+            position:'absolute',
+            left: ($(window).width() - $('.segment').outerWidth())/2,
+            top: ($(window).height() - $('.segment').outerHeight())/2
+        });
+
+    });
+    $(window).resize();
+
+    var tweets = {}
+    $("#authenticate").on("click",function()
+    {
+        $('.ui.modal').modal('hide');
+        $('#wait').modal("show");
+        $.ajax({
+            method:"GET",
+            type:"GET",
+            url:"http://localhost:5000/login",
+            data:{ckey:$("#consKey").val(),csecret:$("#consSec").val(),atoken:$("#accTok").val(),asecret:$("#accSec").val()},
+            success:function(e)
+            {
+                $('#consKey').attr("disabled",true);
+                $("#consSec").attr("disabled",true);
+                $("#accTok").attr("disabled",true);
+                $("#accSec").attr("disabled",true);
+                Toastify({
+                    text: e.msg,
+                    duration: 3000,
+                    newWindow: true,
+                    close: true,
+                    gravity: "top",
+                    positionLeft: true,
+                    backgroundColor: "linear-gradient(to right, #00b09b, #96c93d)",
+                    stopOnFocus: true
+                }).showToast();
+                $('#wait').modal("hide");
+                $("#card")[0].innerHTML = "";
+                $("#card").append("<h2 class='ui header'>Web Crawler & Sentimental Analysis</h2>");
+                $("#card").append("<div id='searchdiv' class='ui icon fluid input'><i id='searchicon' class='search icon'></i><input id='searchkey' type='text' placeholder='Search for specific keyword...'></div>");
+                $('#searchkey').on("keypress",function(e)
+                {
+                    if(e.keyCode===13)
+                    {
+                        $('#searchicon').removeClass("search");
+                        $('#searchdiv').addClass("loading");
+                        searchKeyword($('#searchkey').val());
+                    }
+                });
+            },
+            error:function(er)
+            {
+                Toastify({
+                        text: er.statusText,
+                        duration: 3000,
+                        newWindow: true,
+                        close: true,
+                        gravity: "top",
+                        positionLeft: true,
+                        backgroundColor: "linear-gradient(to right, red, orange)",
+                        stopOnFocus: true
+                    }).showToast();
+                $('#wait').modal("hide");
+                $('.ui.modal').modal('show');
+            }
+        });
+    });
+    function searchKeyword(key)
+    {
+        $('#wait').modal("show");
+        $.ajax({
+            method:"GET",
+            type:"GET",
+            url:"http://localhost:5000/fetchTweets",
+            data:{keyword:key},
+            success:function(e)
+            {
+                tweets = e.response;
+                if(tweets)
+                {
+                    $("#card")[0].innerHTML = "";
+                    $("#card").append("<h2 class='ui header'>Web Crawler & Sentimental Analysis</h2>");
+                    $('#card').append("<table id='table' class='ui selectable fixed table'></table>");
+                    $('#table').append("<thead><tr><th>Location</th><th>Name</th><th>Tweet</th></tr></thead>");
+                    $('#table').append("<tbody id='tablebody'></tbody>");
+                    for(var i=0;i<e.response.length;i++)
+                    {
+                        $('#tablebody').append("<tr><td>"+e.response[i].location+"</td>"+"<td>"+e.response[i].username+"</td><td>"+e.response[i].tweet+"</td></tr>");
+                    }
+                    $('tr').on("click",function(e)
+                    {
+                        analyzeUser(e.currentTarget.childNodes[1].innerHTML, key, e.currentTarget.childNodes[0].innerHTML);
+                    });
+                    $('#wait').modal("hide");
+                }
+                else
+                {
+                    Toastify({
+                        text: "No tweets found!",
+                        duration: 3000,
+                        newWindow: true,
+                        close: true,
+                        gravity: "top",
+                        positionLeft: true,
+                        backgroundColor: "linear-gradient(to right, red, orange)",
+                        stopOnFocus: true
+                    }).showToast();
+                    $('#wait').modal("hide");
+                }
+            },
+            error:function(er)
+            {
+                Toastify({
+                        text: er.statusText,
+                        duration: 3000,
+                        newWindow: true,
+                        close: true,
+                        gravity: "top",
+                        positionLeft: true,
+                        backgroundColor: "linear-gradient(to right, red, orange)",
+                        stopOnFocus: true
+                    }).showToast();
+                $('#wait').modal("hide");
+            }
+        });
+    } 
+    function analyzeUser(user, key, location)
+    {
+        $('#wait').modal("show");
+        let tweetData = "ABCD";
+        for(var i=0;i<tweets.length;i++)
+        {
+            if(tweets[i].username===user)
+            {
+                tweetData = tweets[i].tweet;
+            }
+        }
+        if(tweetData==="ABCD")
+        {
+            alert('no such user found!');
+            $('#wait').modal("hide");
+        }
+        $.ajax({
+            method:"GET",
+            type:"GET",
+            url:"http://localhost:5000/analyze",
+            data:{text: tweetData},
+            success:function(e)
+            {
+                if(e.moods.document_tone.tones.length)
+                {
+                    $("#card")[0].innerHTML = "";
+                    $("#card").append("<h2 class='ui header'>Web Crawler & Sentimental Analysis</h2>");
+                    $('#card').append(`<div class="ui raised centered link card"></div>`);
+                    $('.card').append(`<div class="content"></div>`);                
+                    $('.content').append(`<div class="header">`+user+`</div>`);
+                    $('.content').append(`<div class="meta"></div>`);
+                    $('.meta').append(`<span class="category">`+location+`</span>`);
+                    $('.content').append(`<div class="description"></div>`);
+                    $('.card').append(`<div class="extra content"></div>`);
+                    $('.extra').append(`<div class="right floated author"></div>`);
+                    $('.author').append(`<img class="ui avatar image" src="https://cdn0.iconfinder.com/data/icons/thin-text-editing/24/thin-0256_input_box_text_edit-512.png">`+ key);
+                    for(var i=0;i<e.moods.document_tone.tones.length;i++)
+                    {
+                        $('.description').append(`<div class="ui indicating progress" data-percent="`+parseInt(e.moods.document_tone.tones[i].score*100)+`" data-total='100'>
+                                                    <div class="bar"></div>
+                                                    <div class="progress"></div>
+                                                      <div class="label">`+e.moods.document_tone.tones[i].tone_name+`</div>
+                                                    </div>`
+                                                );
+                        $('.progress').progress();
+                    }
+                    $('#wait').modal("hide");
+                }
+                else
+                {
+                    alert("Sorry no moods found!");
+                    $('#wait').modal("hide");
+                }
+                
+            },
+            error:function(er)
+            {
+                Toastify({
+                        text: er.statusText,
+                        duration: 3000,
+                        newWindow: true,
+                        close: true,
+                        gravity: "top",
+                        positionLeft: true,
+                        backgroundColor: "linear-gradient(to right, red, orange)",
+                        stopOnFocus: true
+                    }).showToast();
+                $('#wait').modal("hide");
+            }
+        });
+    }
+</script>
+</body>
+</html>

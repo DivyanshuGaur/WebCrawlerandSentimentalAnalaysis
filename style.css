@@ -1,0 +1,12 @@
+.header{
+    text-align: center;
+}
+#loginbutton{
+    float: left;
+}
+#closeapp{
+    float: right;
+}
+.image{
+    width: 75%;
+}
